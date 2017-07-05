@@ -20,6 +20,9 @@ POST_HDR = {"Host": "wintermute-151001.appspot.com",
             "Content-Type": "application/json;charset=utf-8",
             "Connection": "keep-alive"}
 
+SPID = 'schemaPrimativeID'
+SPT = 'schemaPrimativeType'
+
 
 def main():
     print("... Starting ...")
@@ -29,9 +32,9 @@ def main():
         user_id = cfg["user_id"]
         print("user_id:", user_id)
         upgrade_list = cfg["upgrade_list"]
-        print("upgrade_list:", upgrade_list)
+        # print("upgrade_list:", upgrade_list)
         remove_list = cfg["remove_list"]
-        print("remove_list:", remove_list)
+        # print("remove_list:", remove_list)
 
     http_state = http_get_state(user_id)
     user_data = json.loads(http_state)
@@ -45,6 +48,7 @@ def main():
     with open('statefile_old.json', 'w') as state_fp:
         state_fp.write(json.dumps(state_dict, sort_keys=True, indent=4))
 
+    unlock_all_characters(state_dict)
     upgrade_dragons(state_dict, upgrade_list)
     remove_dragons(state_dict, remove_list)
 
@@ -79,8 +83,25 @@ def http_post(user_data, token):
     return
 
 
+def unlock_all_characters(state_dict):
+    instances = dict(state_dict['instances'])
+    for hero in instances:
+        if instances[hero][SPID].startswith('character:'):
+            if instances[hero][SPT] == "Item":
+                if instances[hero]['state'] == "locked":
+                    state_dict['instances'][hero]['state'] = "idle"
+                    print("hero unlocked", instances[hero][SPID])
+                elif instances[hero]['state'] == "idle":
+                    print("already unlocked", instances[hero][SPID])
+                elif instances[hero]['state'] == "equipped":
+                    print("already equipped", instances[hero][SPID])
+            elif instances[hero][SPT] == "Stat":
+                state_dict['instances'][hero]['value'] = \
+                    state_dict['instances'][hero]['maximum']
+    return
+
+
 def upgrade_dragons(state_dict, upgrade_list):
-    SPID = 'schemaPrimativeID'
     for item in upgrade_list:
         exp_sidekick_id = "sidekick:"+item['id']
         exp_maturity_id = exp_sidekick_id+'_maturity'
